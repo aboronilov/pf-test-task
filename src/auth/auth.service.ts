@@ -8,72 +8,72 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
-    constructor(
-        private prisma: PrismaService,
-        private jwt: JwtService,
-        private config: ConfigService,
-    ) { }
-    async signup(dto: AuthDto) {
-        const hash = await argon.hash(dto.password)
-        try {
-            const user = await this.prisma.user.create({
-                data: {
-                    email: dto.email,
-                    hash
-                }
-            })
-            return this.signToken(user.id, user.email);
-        } catch (error) {
-            if (
-                error instanceof
-                PrismaClientKnownRequestError
-            ) {
-                if (error.code === 'P2002') {
-                    throw new ForbiddenException(
-                        'User with this email allready exists',
-                    );
-                }
+   constructor(
+      private prisma: PrismaService,
+      private jwt: JwtService,
+      private config: ConfigService,
+   ) { }
+   async signup(dto: AuthDto) {
+      const hash = await argon.hash(dto.password)
+      try {
+         const user = await this.prisma.user.create({
+            data: {
+               email: dto.email,
+               hash
             }
-            throw error;
-        }
-    }
-    async signin(dto: AuthDto) {
-        try {
-            const user = await this.prisma.user.findUniqueOrThrow({
-                where: {
-                    email: dto.email
-                }
-            })
-            const pwMatches = await argon.verify(user.hash, dto.password);
-            if (!pwMatches) {
-                throw new ForbiddenException("Wrong credentials are given")
+         })
+         return this.signToken(user.id, user.email);
+      } catch (error) {
+         if (
+            error instanceof
+            PrismaClientKnownRequestError
+         ) {
+            if (error.code === 'P2002') {
+               throw new ForbiddenException(
+                  'User with this email allready exists',
+               );
             }
-            return this.signToken(user.id, user.email);
-        } catch (error) {
-            throw error;
-        }
+         }
+         throw error;
+      }
+   }
+   async signin(dto: AuthDto) {
+      try {
+         const user = await this.prisma.user.findUniqueOrThrow({
+            where: {
+               email: dto.email
+            }
+         })
+         const pwMatches = await argon.verify(user.hash, dto.password);
+         if (!pwMatches) {
+            throw new ForbiddenException("Wrong credentials are given")
+         }
+         return this.signToken(user.id, user.email);
+      } catch (error) {
+         throw error;
+      }
 
-    }
-    async signToken(
-        userId: number,
-        email: string,
-    ): Promise<{ access_token: string }> {
-        const payload = {
-            sub: userId,
-            email,
-        };
-        const secret = this.config.get('JWT_SECRET');
+   }
+   async signToken(
+      userId: number,
+      email: string,
+   ): Promise<{ access_token: string }> {
+      const payload = {
+         sub: userId,
+         email,
+      };
+      const secret = this.config.get('JWT_SECRET');
 
-        const token = await this.jwt.signAsync(
-            payload,
-            {
-                expiresIn: '30m',
-                secret: secret,
-            },
-        );
+      const token = await this.jwt.signAsync(
+         payload,
+         {
+            expiresIn: '30m',
+            secret: secret,
+         },
+      );
 
-        return {
-            access_token: token,
-        };
-    }
+      return {
+         access_token: token,
+      };
+   }
 }
